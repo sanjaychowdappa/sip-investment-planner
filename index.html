@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP Investment Planner — Live Data | ₹6,000/month</title>
+    <style>
+        :root {
+            --primary: #1a73e8; --primary-dark: #1557b0; --bg: #f5f7fa; --card: #fff;
+            --text: #202124; --muted: #5f6368; --green: #0d904f; --green-bg: #e8f5e9;
+            --orange: #e8710a; --red: #d32f2f; --border: #dadce0; --purple: #7c3aed;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+        .header { background: linear-gradient(135deg, #0d47a1, #1565c0, #1a73e8); color: white; padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+        .header p { opacity: 0.9; }
+
+        .live-bar {
+            display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+            margin-top: 0.7rem; font-size: 0.82rem; opacity: 0.9;
+        }
+        .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; animation: pulse 2s infinite; }
+        .live-dot.loading { background: #ffd600; }
+        .live-dot.error { background: #f44336; animation: none; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .container { max-width: 1250px; margin: 0 auto; padding: 1.5rem; }
+
+        .disclaimer {
+            background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;
+            padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: 0.85rem; color: #856404;
+        }
+
+        .card {
+            background: var(--card); border-radius: 12px; padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border); margin-bottom: 1.5rem;
+        }
+        .card h2 { font-size: 1.12rem; margin-bottom: 1rem; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem; }
+
+        .plan-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .plan-tab {
+            padding: 0.7rem 1.1rem; border: 2px solid var(--border); border-radius: 10px;
+            background: white; cursor: pointer; font-size: 0.88rem; font-weight: 600;
+            transition: all 0.2s; flex: 1; text-align: center; min-width: 130px;
+        }
+        .plan-tab:hover { border-color: var(--primary); }
+        .plan-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .plan-tab .tab-sub { font-size: 0.72rem; font-weight: 400; opacity: 0.8; margin-top: 2px; }
+
+        .split-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+        .fund-card {
+            border: 2px solid var(--border); border-radius: 10px; padding: 1rem;
+            margin-bottom: 0.8rem; position: relative; overflow: hidden; transition: all 0.2s;
+        }
+        .fund-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(26,115,232,0.1); }
+        .fund-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+        .fc-index::before { background: #1a73e8; } .fc-flexi::before { background: #7c3aed; }
+        .fc-mid::before { background: #e8710a; } .fc-small::before { background: #d32f2f; }
+        .fc-large::before { background: #0d904f; } .fc-elss::before { background: #00897b; }
+        .fc-hybrid::before { background: #5c6bc0; } .fc-next50::before { background: #f06292; }
+
+        .fund-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+        .fund-name { font-weight: 700; font-size: 0.9rem; }
+        .fund-category { font-size: 0.73rem; color: var(--muted); margin-top: 2px; }
+        .fund-sip { background: var(--green-bg); color: var(--green); font-weight: 700; padding: 0.2rem 0.7rem; border-radius: 6px; font-size: 0.88rem; white-space: nowrap; }
+
+        .fund-stats { display: flex; gap: 0.4rem; margin-top: 0.6rem; flex-wrap: wrap; }
+        .stat { background: #f8f9fa; border-radius: 6px; padding: 0.3rem 0.5rem; font-size: 0.76rem; text-align: center; flex: 1; min-width: 55px; }
+        .stat .stat-label { color: var(--muted); font-size: 0.68rem; }
+        .stat .stat-value { font-weight: 700; }
+        .stat-green .stat-value { color: var(--green); }
+        .stat-red .stat-value { color: var(--red); }
+
+        .nav-live { display: inline-flex; align-items: center; gap: 4px; background: #e8f5e9; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.72rem; color: var(--green); font-weight: 600; }
+        .nav-live .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+        .risk-badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.66rem; font-weight: 600; text-transform: uppercase; }
+        .rb-low { background: #e8f5e9; color: #2e7d32; } .rb-mod { background: #fff3e0; color: #e65100; } .rb-high { background: #ffebee; color: #c62828; }
+
+        .projection-box { background: linear-gradient(135deg, #e8f5e9, #f1f8e9); border: 2px solid #a5d6a7; border-radius: 12px; padding: 1.5rem; }
+        .proj-row { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.93rem; }
+        .proj-row .label { color: var(--muted); }
+        .proj-row.total { border-top: 2px solid var(--green); margin-top: 0.5rem; padding-top: 0.7rem; font-weight: 700; font-size: 1.2rem; color: var(--green); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        th { background: var(--primary); color: white; padding: 0.5rem; text-align: right; position: sticky; top: 0; font-size: 0.78rem; }
+        th:first-child { text-align: left; border-radius: 8px 0 0 0; }
+        th:last-child { border-radius: 0 8px 0 0; }
+        td { padding: 0.5rem; text-align: right; border-bottom: 1px solid var(--border); }
+        td:first-child { text-align: left; }
+        tr:hover { background: #f0f4ff; }
+        .table-wrap { border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+
+        .donut-wrap { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin: 1rem 0; }
+        .donut-legend { font-size: 0.82rem; }
+        .donut-legend div { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0; }
+        .legend-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+
+        .compare-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1rem; }
+        .compare-card { border: 2px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .compare-card:hover { border-color: var(--primary); }
+        .compare-card.selected { border-color: var(--green); background: #f1f8e9; }
+        .compare-card h4 { font-size: 0.88rem; margin-bottom: 0.3rem; }
+        .compare-value { font-size: 1.25rem; font-weight: 700; color: var(--green); }
+        .compare-sub { font-size: 0.76rem; color: var(--muted); margin-top: 0.2rem; }
+
+        .milestone { display: flex; align-items: center; gap: 1rem; padding: 0.55rem 0; border-bottom: 1px solid #f0f0f0; }
+        .milestone-year { background: var(--primary); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.76rem; flex-shrink: 0; text-align: center; line-height: 1.1; }
+        .milestone-value { font-weight: 700; font-size: 1.02rem; color: var(--green); }
+        .milestone-detail { font-size: 0.76rem; color: var(--muted); }
+
+        .year-table-wrap { max-height: 400px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--border); }
+        .info-box { border-radius: 8px; padding: 0.8rem 1rem; margin-top: 1rem; font-size: 0.85rem; }
+        .info-blue { background: #e3f2fd; border: 1px solid #90caf9; }
+        .info-green { background: #e8f5e9; border: 1px solid #a5d6a7; }
+        .info-purple { background: #f3e5f5; border: 1px solid #ce93d8; }
+
+        .cat-tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .cat-tab { padding: 0.4rem 0.75rem; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; background: white; }
+        .cat-tab:hover { border-color: var(--primary); }
+        .cat-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .tax-row { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.86rem; }
+        .tax-row .label { color: var(--muted); }
+
+        .refresh-btn { background: none; border: 1.5px solid rgba(255,255,255,0.5); color: white; padding: 0.3rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+        .refresh-btn:hover { background: rgba(255,255,255,0.15); border-color: white; }
+
+        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 1rem; color: var(--muted); font-size: 0.95rem; }
+        .loading-progress { margin-top: 0.5rem; color: var(--primary); font-weight: 600; font-size: 0.85rem; }
+
+        @media (max-width: 900px) { .split-grid { grid-template-columns: 1fr; } .compare-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .compare-grid { grid-template-columns: 1fr; } .plan-tabs { flex-direction: column; } }
+    </style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Fetching live NAV data from MFAPI...</div>
+    <div class="loading-progress" id="loadProgress">0 / 37 funds loaded</div>
+</div>
+
+<div class="header">
+    <h1>SIP Investment Planner — Live Data</h1>
+    <p>₹6,000/month Flat SIP | Top Indian Mutual Funds | 15-Year Plan</p>
+    <div class="live-bar">
+        <div class="live-dot" id="liveDot"></div>
+        <span id="liveStatus">Fetching live data...</span>
+        <button class="refresh-btn" onclick="fetchAllLiveData()">Refresh NAV</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="disclaimer">
+        <strong>Disclaimer:</strong> Educational tool only — NOT financial advice. NAV data fetched live from MFAPI.in.
+        Past performance does NOT guarantee future results. <strong>Consult a SEBI-registered financial advisor before investing.</strong>
+    </div>
+
+    <div class="card">
+        <h2>Choose Your ₹6,000/month Allocation Plan</h2>
+        <div class="plan-tabs">
+            <div class="plan-tab active" onclick="selectPlan('balanced',this)">Balanced Growth<div class="tab-sub">Best for most</div></div>
+            <div class="plan-tab" onclick="selectPlan('aggressive',this)">Aggressive<div class="tab-sub">Max returns</div></div>
+            <div class="plan-tab" onclick="selectPlan('conservative',this)">Conservative<div class="tab-sub">Stability first</div></div>
+            <div class="plan-tab" onclick="selectPlan('taxsaver',this)">Tax Saver<div class="tab-sub">80C benefits</div></div>
+        </div>
+        <div id="planDesc"></div>
+    </div>
+
+    <div class="split-grid">
+        <div class="card">
+            <h2>Your Monthly ₹6,000 Allocation</h2>
+            <div id="fundCards"></div>
+            <div class="donut-wrap">
+                <canvas id="donut" width="170" height="170"></canvas>
+                <div id="legend" class="donut-legend"></div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>15-Year Projection (Flat ₹6,000/month — No Step-Up)</h2>
+            <div id="projection"></div>
+            <div class="info-box info-blue" style="margin-top:1rem">
+                <strong>No step-up applied.</strong> Flat ₹6,000 every month for 15 years.
+                If your income grows later, even adding ₹500 extra will compound significantly.
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Fund-Wise 15-Year Breakdown</h2>
+        <div class="table-wrap"><table id="fundTable"></table></div>
+    </div>
+
+    <div class="card">
+        <h2>All Plans Compared — 15 Years (Flat ₹6,000/month)</h2>
+        <div class="compare-grid" id="compareGrid"></div>
+    </div>
+
+    <div class="split-grid">
+        <div class="card">
+            <h2>Wealth Milestones</h2>
+            <div id="milestones"></div>
+        </div>
+        <div class="card">
+            <h2>Year-by-Year Growth</h2>
+            <div class="year-table-wrap"><table id="yearTable"></table></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Full Fund Database — Live NAV</h2>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem">Browse all funds with live NAV. Returns calculated from historical NAV data via MFAPI.</p>
+        <div class="cat-tabs" id="catTabs"></div>
+        <div class="table-wrap"><table id="catTable"></table></div>
+    </div>
+
+    <div class="card">
+        <h2>Tax Implications (FY 2025-26)</h2>
+        <div class="split-grid">
+            <div>
+                <h3 style="font-size:0.95rem;margin-bottom:0.5rem">Equity Funds (held > 1 year)</h3>
+                <div class="tax-row"><span class="label">LTCG up to ₹1.25L/year</span><span style="color:var(--green);font-weight:700">TAX FREE</span></div>
+                <div class="tax-row"><span class="label">LTCG above ₹1.25L</span><span style="font-weight:600">12.5%</span></div>
+                <div class="tax-row"><span class="label">STCG (< 1 year)</span><span style="font-weight:600">20%</span></div>
+            </div>
+            <div>
+                <h3 style="font-size:0.95rem;margin-bottom:0.5rem">ELSS (Section 80C — Old Regime)</h3>
+                <div class="tax-row"><span class="label">Deduction limit</span><span style="font-weight:600">₹1,50,000/year</span></div>
+                <div class="tax-row"><span class="label">Tax saved (30% slab)</span><span style="color:var(--green);font-weight:700">₹46,800/year</span></div>
+                <div class="tax-row"><span class="label">Lock-in</span><span style="font-weight:600">3 years</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>How to Start</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+            <div><h3 style="color:var(--primary);font-size:0.9rem">1. e-KYC</h3><p style="font-size:0.82rem;color:var(--muted)">PAN + Aadhaar + bank. 5 min on any platform.</p></div>
+            <div><h3 style="color:var(--primary);font-size:0.9rem">2. Platform</h3><p style="font-size:0.82rem;color:var(--muted)">Groww, Kuvera, Zerodha Coin, or AMC websites.</p></div>
+            <div><h3 style="color:var(--primary);font-size:0.9rem">3. SIP Setup</h3><p style="font-size:0.82rem;color:var(--muted)"><strong>"Direct - Growth"</strong> plan. Auto-debit. Fixed date.</p></div>
+        </div>
+        <div class="info-box info-green">
+            <strong>Always "Direct Plan - Growth"</strong> — saves 0.5-1% expense ratio = <strong>₹2-5 lakh more</strong> over 15 years.
+        </div>
+    </div>
+</div>
+
+<script>
+// ============ SCHEME CODES (MFAPI) ============
+const SCHEMES = {
+    'Nippon India Nifty 50 Index Fund': 118741,
+    'UTI Nifty 50 Index Fund': 120716,
+    'HDFC Nifty 50 Index Fund': 119063,
+    'ICICI Pru Nifty Next 50 Index Fund': 120684,
+    'Motilal Oswal Nifty Next 50 Index Fund': 147796,
+    'UTI Nifty Next 50 Index Fund': 143341,
+    'Parag Parikh Flexi Cap Fund': 122639,
+    'HDFC Flexi Cap Fund': 118955,
+    'JM Flexicap Fund': 120492,
+    'Quant Flexi Cap Fund': 120843,
+    'Kotak Flexicap Fund': 120166,
+    'Motilal Oswal Midcap Fund': 127042,
+    'HDFC Mid-Cap Opportunities Fund': 118989,
+    'Edelweiss Mid Cap Fund': 140228,
+    'Quant Mid Cap Fund': 120841,
+    'Kotak Emerging Equity Fund': 119775,
+    'Quant Small Cap Fund': 120828,
+    'Bandhan Small Cap Fund': 147946,
+    'Nippon India Small Cap Fund': 118778,
+    'Edelweiss Small Cap Fund': 146196,
+    'HDFC Small Cap Fund': 130503,
+    'SBI Small Cap Fund': 125497,
+    'Nippon India Large Cap Fund': 118632,
+    'ICICI Pru Bluechip Fund': 120586,
+    'Canara Robeco Bluechip Fund': 118269,
+    'Mirae Asset Large Cap Fund': 118825,
+    'SBI Bluechip Fund': 119598,
+    'Motilal Oswal ELSS Tax Saver': 133386,
+    'SBI ELSS Tax Saver Fund': 119723,
+    'HDFC ELSS Tax Saver Fund': 119060,
+    'Quant ELSS Tax Saver Fund': 120847,
+    'DSP ELSS Tax Saver Fund': 119242,
+    'ICICI Pru Equity & Debt Fund': 120251,
+    'Edelweiss Aggressive Hybrid Fund': 118624,
+    'Quant Absolute Fund': 120819,
+    'Kotak Aggressive Hybrid Fund': 133035,
+    'Canara Robeco Equity Hybrid Fund': 118272,
+};
+
+// Static fallback data
+const STATIC_DATA = {
+    'Nippon India Nifty 50 Index Fund': { er: 0.11, r1: -4, r3: 10, r5: 16, risk: 'mod' },
+    'UTI Nifty 50 Index Fund': { er: 0.26, r1: -4.26, r3: 9.18, r5: 9.86, risk: 'mod' },
+    'HDFC Nifty 50 Index Fund': { er: 0.20, r1: -4, r3: 9, r5: 16, risk: 'mod' },
+    'ICICI Pru Nifty Next 50 Index Fund': { er: 0.26, r1: 13, r3: 20, r5: 12.94, risk: 'mod' },
+    'Motilal Oswal Nifty Next 50 Index Fund': { er: 0.32, r1: 19.24, r3: 24, r5: 15.78, risk: 'mod' },
+    'UTI Nifty Next 50 Index Fund': { er: 0.35, r1: 20.93, r3: 23, r5: 14.83, risk: 'mod' },
+    'Parag Parikh Flexi Cap Fund': { er: 0.62, r1: 1.23, r3: 16.94, r5: 16.3, risk: 'mod' },
+    'HDFC Flexi Cap Fund': { er: 0.67, r1: 0.14, r3: 17.78, r5: 17.55, risk: 'mod' },
+    'JM Flexicap Fund': { er: 0.68, r1: 3.37, r3: 21.02, r5: 18.98, risk: 'mod' },
+    'Quant Flexi Cap Fund': { er: 0.75, r1: -2, r3: 18, r5: 31.9, risk: 'high' },
+    'Kotak Flexicap Fund': { er: 0.59, r1: -0.46, r3: 14.34, r5: 12.59, risk: 'mod' },
+    'Motilal Oswal Midcap Fund': { er: 0.82, r1: -8.53, r3: 18.37, r5: 22.89, risk: 'high' },
+    'HDFC Mid-Cap Opportunities Fund': { er: 0.80, r1: -3, r3: 27, r5: 22.25, risk: 'high' },
+    'Edelweiss Mid Cap Fund': { er: 0.48, r1: -2, r3: 27, r5: 21.47, risk: 'high' },
+    'Quant Mid Cap Fund': { er: 0.82, r1: 0.62, r3: 20, r5: 20.36, risk: 'high' },
+    'Kotak Emerging Equity Fund': { er: 0.41, r1: 7.08, r3: 21.23, r5: 18.57, risk: 'high' },
+    'Quant Small Cap Fund': { er: 0.81, r1: -5, r3: 19, r5: 26.88, risk: 'high' },
+    'Bandhan Small Cap Fund': { er: 0.42, r1: 5.94, r3: 29.71, r5: 23, risk: 'high' },
+    'Nippon India Small Cap Fund': { er: 0.55, r1: 3.71, r3: 19.52, r5: 21.22, risk: 'high' },
+    'Edelweiss Small Cap Fund': { er: 0.45, r1: 0, r3: 18, r5: 20.17, risk: 'high' },
+    'HDFC Small Cap Fund': { er: 0.80, r1: -2, r3: 18, r5: 20, risk: 'high' },
+    'SBI Small Cap Fund': { er: 0.70, r1: 1, r3: 17, r5: 19, risk: 'high' },
+    'Nippon India Large Cap Fund': { er: 0.65, r1: -2, r3: 14, r5: 21.8, risk: 'mod' },
+    'ICICI Pru Bluechip Fund': { er: 0.80, r1: -1, r3: 14, r5: 13.36, risk: 'mod' },
+    'Canara Robeco Bluechip Fund': { er: 0.52, r1: -1, r3: 13, r5: 13, risk: 'mod' },
+    'Mirae Asset Large Cap Fund': { er: 0.54, r1: -1, r3: 12, r5: 13, risk: 'mod' },
+    'SBI Bluechip Fund': { er: 0.80, r1: -1, r3: 13, r5: 13, risk: 'mod' },
+    'Motilal Oswal ELSS Tax Saver': { er: 0.80, r1: 4.47, r3: 27, r5: 21.3, risk: 'mod' },
+    'SBI ELSS Tax Saver Fund': { er: 0.70, r1: 1, r3: 15, r5: 18.5, risk: 'mod' },
+    'HDFC ELSS Tax Saver Fund': { er: 1.10, r1: 0.5, r3: 17.6, r5: 18.2, risk: 'mod' },
+    'Quant ELSS Tax Saver Fund': { er: 0.75, r1: 11.43, r3: 20, r5: 17.4, risk: 'high' },
+    'DSP ELSS Tax Saver Fund': { er: 0.70, r1: 0, r3: 15, r5: 15.6, risk: 'mod' },
+    'ICICI Pru Equity & Debt Fund': { er: 0.94, r1: 1, r3: 14, r5: 16.79, risk: 'low' },
+    'Edelweiss Aggressive Hybrid Fund': { er: 0.50, r1: 1, r3: 13, r5: 15.75, risk: 'low' },
+    'Quant Absolute Fund': { er: 0.80, r1: 0, r3: 14, r5: 14.9, risk: 'low' },
+    'Kotak Aggressive Hybrid Fund': { er: 0.60, r1: 1, r3: 13, r5: 14.5, risk: 'low' },
+    'Canara Robeco Equity Hybrid Fund': { er: 0.60, r1: 2.42, r3: 13.07, r5: 11.65, risk: 'low' },
+};
+
+let liveNAV = {};
+let loadedCount = 0;
+const totalFunds = Object.keys(SCHEMES).length;
+
+// ============ LIVE DATA FETCHING ============
+async function fetchFundData(name, code) {
+    try {
+        const resp = await fetch(`https://api.mfapi.in/mf/${code}`);
+        const data = await resp.json();
+        if (data && data.data && data.data.length > 0) {
+            const navs = data.data;
+            const currentNAV = parseFloat(navs[0].nav);
+            const currentDate = navs[0].date;
+
+            const getNavOnDate = (daysAgo) => {
+                const target = navs.find((n, i) => i >= daysAgo * 0.7 && i <= daysAgo * 1.3) || navs[Math.min(daysAgo, navs.length - 1)];
+                return target ? parseFloat(target.nav) : null;
+            };
+
+            const calcCAGR = (oldNav, newNav, years) => {
+                if (!oldNav || oldNav <= 0) return null;
+                return ((Math.pow(newNav / oldNav, 1 / years) - 1) * 100);
+            };
+
+            const nav1Y = navs.length > 250 ? parseFloat(navs[Math.min(252, navs.length - 1)].nav) : null;
+            const nav3Y = navs.length > 750 ? parseFloat(navs[Math.min(756, navs.length - 1)].nav) : null;
+            const nav5Y = navs.length > 1250 ? parseFloat(navs[Math.min(1260, navs.length - 1)].nav) : null;
+
+            liveNAV[name] = {
+                nav: currentNAV,
+                date: currentDate,
+                r1: calcCAGR(nav1Y, currentNAV, 1),
+                r3: calcCAGR(nav3Y, currentNAV, 3),
+                r5: calcCAGR(nav5Y, currentNAV, 5),
+                live: true
+            };
+        }
+    } catch (e) {
+        console.log(`Failed to fetch ${name}:`, e);
+    }
+    loadedCount++;
+    document.getElementById('loadProgress').textContent = `${loadedCount} / ${totalFunds} funds loaded`;
+}
+
+async function fetchAllLiveData() {
+    loadedCount = 0;
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('liveDot').className = 'live-dot loading';
+    document.getElementById('liveStatus').textContent = 'Fetching live data...';
+
+    const batchSize = 5;
+    const entries = Object.entries(SCHEMES);
+    for (let i = 0; i < entries.length; i += batchSize) {
+        const batch = entries.slice(i, i + batchSize);
+        await Promise.all(batch.map(([name, code]) => fetchFundData(name, code)));
+    }
+
+    const liveCount = Object.values(liveNAV).filter(v => v.live).length;
+    document.getElementById('loadingOverlay').style.display = 'none';
+
+    if (liveCount > 0) {
+        const anyDate = Object.values(liveNAV).find(v => v.date);
+        document.getElementById('liveDot').className = 'live-dot';
+        document.getElementById('liveStatus').textContent = `Live NAV: ${liveCount}/${totalFunds} funds | Last: ${anyDate ? anyDate.date : 'N/A'}`;
+    } else {
+        document.getElementById('liveDot').className = 'live-dot error';
+        document.getElementById('liveStatus').textContent = 'Using cached data (API unavailable)';
+    }
+
+    renderAll();
+    renderCatTabs();
+}
+
+function getFundReturns(name) {
+    const live = liveNAV[name];
+    const stat = STATIC_DATA[name] || {};
+    return {
+        nav: live ? live.nav : null,
+        navDate: live ? live.date : null,
+        r1: (live && live.r1 !== null) ? +live.r1.toFixed(2) : (stat.r1 || 0),
+        r3: (live && live.r3 !== null) ? +live.r3.toFixed(2) : (stat.r3 || 0),
+        r5: (live && live.r5 !== null) ? +live.r5.toFixed(2) : (stat.r5 || 0),
+        er: stat.er || 0,
+        risk: stat.risk || 'mod',
+        isLive: !!(live && live.live)
+    };
+}
+
+// ============ PLANS ============
+const COLORS = { index: '#1a73e8', flexi: '#7c3aed', mid: '#e8710a', small: '#d32f2f', large: '#0d904f', elss: '#00897b', hybrid: '#5c6bc0', next50: '#f06292' };
+
+const PLANS = {
+    balanced: {
+        name: 'Balanced Growth', desc: 'Diversified across large, mid, and small caps. Best risk-reward for 15 years.',
+        funds: [
+            { name: 'Nippon India Nifty 50 Index Fund', cat: 'index', amount: 2000, pct: 33, rate: 12, why: 'Lowest cost Nifty 50 tracker — your portfolio anchor' },
+            { name: 'Parag Parikh Flexi Cap Fund', cat: 'flexi', amount: 1500, pct: 25, rate: 13, why: 'India + international stocks. Largest flexi cap fund' },
+            { name: 'Motilal Oswal Midcap Fund', cat: 'mid', amount: 1500, pct: 25, rate: 14, why: 'Top midcap — 5Y CAGR category leader' },
+            { name: 'Nippon India Small Cap Fund', cat: 'small', amount: 1000, pct: 17, rate: 15, why: 'Largest small cap. Since-inception 23.89% CAGR' }
+        ]
+    },
+    aggressive: {
+        name: 'Aggressive Growth', desc: 'Heavy mid + small cap (66%). Maximum growth but expect large drawdowns.',
+        funds: [
+            { name: 'ICICI Pru Nifty Next 50 Index Fund', cat: 'next50', amount: 1000, pct: 17, rate: 13, why: 'Tomorrow\'s Nifty 50. Low cost growth core' },
+            { name: 'Motilal Oswal Midcap Fund', cat: 'mid', amount: 2000, pct: 33, rate: 14.5, why: 'Best 5Y midcap returns' },
+            { name: 'Quant Small Cap Fund', cat: 'small', amount: 2000, pct: 33, rate: 16, why: 'Highest 5Y small cap — 26.88% CAGR' },
+            { name: 'JM Flexicap Fund', cat: 'flexi', amount: 1000, pct: 17, rate: 13.5, why: 'Strong 3Y (21%) and 5Y. Diversification layer' }
+        ]
+    },
+    conservative: {
+        name: 'Conservative', desc: 'Large-cap and hybrid heavy. Lower volatility, smoother ride.',
+        funds: [
+            { name: 'UTI Nifty 50 Index Fund', cat: 'index', amount: 2500, pct: 42, rate: 12, why: 'Most popular index fund. Low tracking error' },
+            { name: 'Nippon India Large Cap Fund', cat: 'large', amount: 1500, pct: 25, rate: 11, why: '5-star rated. Best large cap by 5Y' },
+            { name: 'ICICI Pru Equity & Debt Fund', cat: 'hybrid', amount: 1000, pct: 17, rate: 10.5, why: 'Auto-rebalances equity/debt. Largest hybrid' },
+            { name: 'Kotak Flexicap Fund', cat: 'flexi', amount: 1000, pct: 16, rate: 11, why: 'Lowest ER flexi cap. Since 1994' }
+        ]
+    },
+    taxsaver: {
+        name: 'Tax Saver (ELSS)', desc: '₹3,500/mo in ELSS for 80C benefits. 3-year lock-in. Rest in non-ELSS for liquidity.',
+        funds: [
+            { name: 'Motilal Oswal ELSS Tax Saver', cat: 'elss', amount: 2000, pct: 33, rate: 13, why: 'ELSS category leader by 5Y CAGR' },
+            { name: 'SBI ELSS Tax Saver Fund', cat: 'elss', amount: 1500, pct: 25, rate: 12.5, why: 'Reliable ELSS. Diversify across fund houses' },
+            { name: 'Nippon India Nifty 50 Index Fund', cat: 'index', amount: 1500, pct: 25, rate: 12, why: 'No lock-in. Liquid core' },
+            { name: 'Edelweiss Mid Cap Fund', cat: 'mid', amount: 1000, pct: 17, rate: 14, why: 'Growth kicker. Lowest ER midcap' }
+        ]
+    }
+};
+
+let currentPlan = 'balanced', currentCat = 'Nifty 50 Index';
+
+function fmt(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function calcSIP(monthly, years, annualRate) {
+    const mr = annualRate / 100 / 12;
+    let inv = 0, val = 0, yearData = [];
+    for (let y = 1; y <= years; y++) {
+        for (let m = 0; m < 12; m++) { val = (val + monthly) * (1 + mr); inv += monthly; }
+        yearData.push({ year: y, sip: monthly, inv, val, gains: val - inv });
+    }
+    return { inv, val, gains: val - inv, yearData };
+}
+
+function selectPlan(k, el) {
+    currentPlan = k;
+    document.querySelectorAll('.plan-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderAll();
+}
+
+function drawDonut(funds) {
+    const c = document.getElementById('donut'), ctx = c.getContext('2d');
+    const cx = 85, cy = 85, r = 72, inner = 42;
+    ctx.clearRect(0, 0, 170, 170);
+    let start = -Math.PI / 2;
+    funds.forEach(f => {
+        const a = (f.pct / 100) * 2 * Math.PI;
+        ctx.beginPath(); ctx.arc(cx, cy, r, start, start + a);
+        ctx.arc(cx, cy, inner, start + a, start, true); ctx.closePath();
+        ctx.fillStyle = COLORS[f.cat]; ctx.fill(); start += a;
+    });
+    ctx.beginPath(); ctx.arc(cx, cy, inner - 1, 0, 2 * Math.PI);
+    ctx.fillStyle = 'white'; ctx.fill();
+    ctx.fillStyle = '#202124'; ctx.font = 'bold 15px Segoe UI'; ctx.textAlign = 'center';
+    ctx.fillText('₹6,000', cx, cy); ctx.font = '10px Segoe UI'; ctx.fillStyle = '#5f6368';
+    ctx.fillText('/month', cx, cy + 13);
+    let leg = '';
+    funds.forEach(f => { leg += `<div><span class="legend-dot" style="background:${COLORS[f.cat]}"></span>${f.pct}% — ${f.name.split(' ').slice(0,4).join(' ')}</div>`; });
+    document.getElementById('legend').innerHTML = leg;
+}
+
+function renderAll() {
+    const plan = PLANS[currentPlan], funds = plan.funds;
+    document.getElementById('planDesc').innerHTML = `<div class="info-box info-green"><strong>${plan.name}:</strong> ${plan.desc}</div>`;
+
+    let fc = '';
+    funds.forEach(f => {
+        const d = getFundReturns(f.name);
+        const rc = d.risk === 'low' ? 'rb-low' : d.risk === 'mod' ? 'rb-mod' : 'rb-high';
+        const rl = d.risk === 'low' ? 'Lower' : d.risk === 'mod' ? 'Moderate' : 'High';
+        const navHTML = d.nav ? `<span class="nav-live"><span class="dot"></span>NAV ₹${d.nav.toFixed(2)} (${d.navDate})</span>` : '';
+        const r1c = d.r1 >= 0 ? 'stat-green' : 'stat-red';
+        fc += `
+        <div class="fund-card fc-${f.cat}">
+            <div class="fund-header">
+                <div>
+                    <div class="fund-name">${f.name} ${navHTML}</div>
+                    <div class="fund-category">Direct-Growth | ER: ${d.er}% | ${d.isLive ? 'LIVE' : 'Cached'}</div>
+                </div>
+                <div class="fund-sip">${fmt(f.amount)}/mo</div>
+            </div>
+            <div class="fund-stats">
+                <div class="stat"><div class="stat-label">Alloc</div><div class="stat-value">${f.pct}%</div></div>
+                <div class="stat ${r1c}"><div class="stat-label">1Y</div><div class="stat-value">${d.r1 > 0 ? '+' : ''}${d.r1}%</div></div>
+                <div class="stat stat-green"><div class="stat-label">3Y</div><div class="stat-value">${d.r3}%</div></div>
+                <div class="stat stat-green"><div class="stat-label">5Y</div><div class="stat-value">${d.r5}%</div></div>
+                <div class="stat"><div class="stat-label">Risk</div><div class="stat-value"><span class="risk-badge ${rc}">${rl}</span></div></div>
+            </div>
+            <div style="font-size:0.8rem;color:var(--muted);margin-top:0.4rem">${f.why}</div>
+        </div>`;
+    });
+    document.getElementById('fundCards').innerHTML = fc;
+    drawDonut(funds);
+
+    const results = funds.map(f => ({ ...f, ...calcSIP(f.amount, 15, f.rate) }));
+    const tI = results.reduce((s, r) => s + r.inv, 0);
+    const tV = results.reduce((s, r) => s + r.val, 0);
+    document.getElementById('projection').innerHTML = `
+        <div class="projection-box">
+            <div class="proj-row"><span class="label">Monthly SIP (flat)</span><span><strong>₹6,000</strong></span></div>
+            <div class="proj-row"><span class="label">Total Invested (15 yrs)</span><span><strong>${fmt(tI)}</strong></span></div>
+            <div class="proj-row"><span class="label">Wealth Gained</span><span style="color:var(--green)"><strong>${fmt(tV - tI)}</strong></span></div>
+            <div class="proj-row total"><span>Expected Corpus</span><span>${fmt(tV)}</span></div>
+            <div class="proj-row"><span class="label">Return Multiple</span><span><strong>${(tV / tI).toFixed(2)}x your money</strong></span></div>
+        </div>`;
+
+    let ft = `<tr><th>Fund</th><th>SIP/mo</th><th>CAGR</th><th>ER</th><th>Invested</th><th>15Y Value</th><th>Gains</th></tr>`;
+    results.forEach(r => {
+        const d = getFundReturns(r.name);
+        ft += `<tr><td style="color:${COLORS[r.cat]};max-width:180px">${r.name}</td><td>${fmt(r.amount)}</td><td>${r.rate}%</td><td>${d.er}%</td><td>${fmt(r.inv)}</td><td style="font-weight:700">${fmt(r.val)}</td><td style="color:var(--green)">${fmt(r.gains)}</td></tr>`;
+    });
+    ft += `<tr style="background:#f1f8e9;font-weight:700"><td style="color:var(--green)">TOTAL</td><td>${fmt(6000)}</td><td colspan="2">—</td><td>${fmt(tI)}</td><td style="color:var(--green)">${fmt(tV)}</td><td style="color:var(--green)">${fmt(tV-tI)}</td></tr>`;
+    document.getElementById('fundTable').innerHTML = ft;
+
+    let cg = '';
+    Object.entries(PLANS).forEach(([k, p]) => {
+        const res = p.funds.map(f => calcSIP(f.amount, 15, f.rate));
+        const tv = res.reduce((s, r) => s + r.val, 0), ti = res.reduce((s, r) => s + r.inv, 0);
+        cg += `<div class="compare-card${k === currentPlan ? ' selected' : ''}" onclick="document.querySelectorAll('.plan-tab')[${['balanced','aggressive','conservative','taxsaver'].indexOf(k)}].click()">
+            <h4>${p.name}</h4><div class="compare-value">${fmt(tv)}</div>
+            <div class="compare-sub">Invested: ${fmt(ti)} | Gains: ${fmt(tv-ti)}</div>
+            ${k === currentPlan ? '<div style="color:var(--green);font-weight:700;margin-top:0.3rem">SELECTED</div>' : ''}
+        </div>`;
+    });
+    document.getElementById('compareGrid').innerHTML = cg;
+
+    const wRate = funds.reduce((s, f) => s + f.rate * f.pct / 100, 0);
+    const total = calcSIP(6000, 15, wRate);
+    let ms = '';
+    [3, 5, 7, 10, 12, 15].forEach(y => {
+        const d = total.yearData[y - 1];
+        ms += `<div class="milestone"><div class="milestone-year">Year<br>${y}</div><div><div class="milestone-value">${fmt(d.val)}</div><div class="milestone-detail">Invested: ${fmt(d.inv)} | Gains: ${fmt(d.gains)}</div></div></div>`;
+    });
+    document.getElementById('milestones').innerHTML = ms;
+
+    let yt = `<tr><th>Year</th><th>SIP/mo</th><th>Invested</th><th>Value</th><th>Gains</th></tr>`;
+    total.yearData.forEach(d => {
+        yt += `<tr><td>Year ${d.year}</td><td>${fmt(d.sip)}</td><td>${fmt(d.inv)}</td><td style="font-weight:600">${fmt(d.val)}</td><td style="color:var(--green)">${fmt(d.gains)}</td></tr>`;
+    });
+    document.getElementById('yearTable').innerHTML = yt;
+}
+
+// ============ CATEGORY BROWSER ============
+const FUND_CATS = {
+    'Nifty 50 Index': ['Nippon India Nifty 50 Index Fund', 'UTI Nifty 50 Index Fund', 'HDFC Nifty 50 Index Fund'],
+    'Nifty Next 50': ['ICICI Pru Nifty Next 50 Index Fund', 'Motilal Oswal Nifty Next 50 Index Fund', 'UTI Nifty Next 50 Index Fund'],
+    'Flexi Cap': ['Parag Parikh Flexi Cap Fund', 'HDFC Flexi Cap Fund', 'JM Flexicap Fund', 'Quant Flexi Cap Fund', 'Kotak Flexicap Fund'],
+    'Mid Cap': ['Motilal Oswal Midcap Fund', 'HDFC Mid-Cap Opportunities Fund', 'Edelweiss Mid Cap Fund', 'Quant Mid Cap Fund', 'Kotak Emerging Equity Fund'],
+    'Small Cap': ['Quant Small Cap Fund', 'Bandhan Small Cap Fund', 'Nippon India Small Cap Fund', 'Edelweiss Small Cap Fund', 'HDFC Small Cap Fund', 'SBI Small Cap Fund'],
+    'Large Cap': ['Nippon India Large Cap Fund', 'ICICI Pru Bluechip Fund', 'Canara Robeco Bluechip Fund', 'Mirae Asset Large Cap Fund', 'SBI Bluechip Fund'],
+    'ELSS Tax Saver': ['Motilal Oswal ELSS Tax Saver', 'SBI ELSS Tax Saver Fund', 'HDFC ELSS Tax Saver Fund', 'Quant ELSS Tax Saver Fund', 'DSP ELSS Tax Saver Fund'],
+    'Hybrid': ['ICICI Pru Equity & Debt Fund', 'Edelweiss Aggressive Hybrid Fund', 'Quant Absolute Fund', 'Kotak Aggressive Hybrid Fund', 'Canara Robeco Equity Hybrid Fund'],
+};
+
+function renderCatTabs() {
+    let tabs = '';
+    Object.keys(FUND_CATS).forEach((cat, i) => {
+        tabs += `<div class="cat-tab${i === 0 ? ' active' : ''}" onclick="selectCat('${cat}', this)">${cat}</div>`;
+    });
+    document.getElementById('catTabs').innerHTML = tabs;
+    renderCatTable();
+}
+
+function selectCat(cat, el) {
+    currentCat = cat;
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderCatTable();
+}
+
+function renderCatTable() {
+    const names = FUND_CATS[currentCat];
+    let html = `<tr><th style="min-width:200px">Fund (Direct-Growth)</th><th>NAV</th><th>ER</th><th>1Y</th><th>3Y CAGR</th><th>5Y CAGR</th><th>Risk</th><th>Status</th></tr>`;
+    names.forEach((name, i) => {
+        const d = getFundReturns(name);
+        const rc = d.risk === 'low' ? 'rb-low' : d.risk === 'mod' ? 'rb-mod' : 'rb-high';
+        const rl = d.risk === 'low' ? 'Lower' : d.risk === 'mod' ? 'Moderate' : 'High';
+        const r1c = d.r1 >= 0 ? 'color:var(--green)' : 'color:var(--red)';
+        const navText = d.nav ? `₹${d.nav.toFixed(2)}` : '—';
+        const badge = i === 0 ? ' <span style="background:#ffd600;color:#333;font-size:0.62rem;font-weight:700;padding:0.1rem 0.3rem;border-radius:3px">TOP</span>' : '';
+        const status = d.isLive ? '<span style="color:var(--green);font-weight:600">LIVE</span>' : '<span style="color:var(--muted)">Cached</span>';
+        html += `<tr><td style="font-weight:600">${name}${badge}</td><td>${navText}</td><td>${d.er}%</td>
+        <td style="${r1c}">${d.r1 > 0 ? '+' : ''}${d.r1}%</td><td style="color:var(--green)">${d.r3}%</td>
+        <td style="color:var(--green);font-weight:700">${d.r5}%</td>
+        <td><span class="risk-badge ${rc}">${rl}</span></td><td>${status}</td></tr>`;
+    });
+    document.getElementById('catTable').innerHTML = html;
+}
+
+// ============ INIT ============
+fetchAllLiveData();
+</script>
+
+</body>
+</html>
