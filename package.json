@@ -1,0 +1,41 @@
+{
+  "name": "sip-investment-planner",
+  "version": "1.0.0",
+  "description": "SIP Investment Planner - Live mutual fund tracker with auto-rankings for Indian investors",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable",
+    "build-installer": "electron-builder --win nsis"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanjaychowdappa/sip-investment-planner.git"
+  },
+  "author": "Sanjay Chowdappa",
+  "license": "MIT",
+  "type": "commonjs",
+  "build": {
+    "appId": "com.sanjay.sip-planner",
+    "productName": "SIP Investment Planner",
+    "win": {
+      "target": ["portable"],
+      "icon": "icon.ico"
+    },
+    "portable": {
+      "artifactName": "SIP-Investment-Planner.exe"
+    },
+    "files": [
+      "main.js",
+      "index.html",
+      "icon.ico"
+    ],
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^42.3.3",
+    "electron-builder": "^26.15.0"
+  }
+}
