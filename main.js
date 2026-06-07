@@ -48,7 +48,7 @@ function createWindow() {
                         type: 'info',
                         title: 'SIP Investment Planner',
                         message: 'SIP Investment Planner v1.0.0',
-                        detail: 'Monthly mutual fund tracker with live NAV data.\n₹6,000/month across top Indian mutual funds.\n\nData: MFAPI.in (free, no API key)\nDisclaimer: Educational tool only. Not financial advice.'
+                        detail: 'Monthly mutual fund tracker with live NAV data.\nCustomizable SIP across top Indian mutual funds.\n\nData: MFAPI.in (free, no API key)\nDisclaimer: Educational tool only. Not financial advice.'
                     });
                 }}
             ]

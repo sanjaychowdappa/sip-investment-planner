@@ -142,7 +142,7 @@
 
 <div class="header">
     <h1>SIP Investment Planner — Live Data</h1>
-    <p>₹6,000/month | Top Indian Mutual Funds | 15-Year Plan</p>
+    <p>Custom SIP | Top Indian Mutual Funds | Live Data</p>
     <div class="live-bar">
         <div class="live-dot" id="liveDot"></div>
         <span id="liveStatus">Fetching live data...</span>
@@ -156,15 +156,36 @@
         <strong>Consult a SEBI-registered financial advisor before investing.</strong>
     </div>
 
-    <!-- Step-Up Toggle -->
+    <!-- Investment Settings -->
     <div class="card">
-        <h2>Investment Mode</h2>
-        <div class="toggle-wrap">
+        <h2>Your Investment Settings</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;align-items:end">
+            <div>
+                <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem">Monthly SIP Amount (₹)</label>
+                <input type="number" id="sipAmount" value="6000" min="500" max="500000" step="500"
+                    style="width:100%;padding:0.5rem 0.7rem;border:2px solid var(--primary);border-radius:8px;font-size:1.1rem;font-weight:700;color:var(--primary);text-align:center"
+                    onchange="recalcAllocations()">
+                <div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;text-align:center">Min ₹500 | Enter any amount</div>
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem">Duration (Years)</label>
+                <input type="number" id="sipYears" value="15" min="1" max="40" step="1"
+                    style="width:100%;padding:0.5rem 0.7rem;border:2px solid var(--border);border-radius:8px;font-size:1.1rem;font-weight:700;text-align:center"
+                    onchange="recalcAllocations()">
+                <div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;text-align:center">1 to 40 years</div>
+            </div>
+            <div>
+                <button onclick="recalcAllocations()" style="width:100%;padding:0.6rem;background:var(--primary);color:white;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer">
+                    Calculate
+                </button>
+            </div>
+        </div>
+        <div class="toggle-wrap" style="margin-top:1rem">
             <div class="toggle-label" id="togFlat" onclick="setMode('flat')">Flat SIP (No Step-Up)</div>
             <div class="toggle-label active" id="togStep" onclick="setMode('stepup')">Step-Up SIP</div>
             <div class="stepup-input" id="stepupInput">
                 <span style="font-size:0.85rem;font-weight:600">Annual Increase:</span>
-                <input type="number" id="stepPct" value="10" min="0" max="50" step="5" onchange="renderAll(); if(Object.keys(liveNAV).length>0)renderRankings();">
+                <input type="number" id="stepPct" value="10" min="0" max="50" step="5" onchange="recalcAllocations()">
                 <span style="font-size:0.85rem">%</span>
             </div>
         </div>
@@ -173,7 +194,7 @@
 
     <!-- Plan Selection -->
     <div class="card">
-        <h2>Choose Your ₹6,000/month Allocation Plan</h2>
+        <h2 id="planTitle">Choose Your Allocation Plan</h2>
         <div class="plan-tabs">
             <div class="plan-tab active" onclick="selectPlan('balanced',this)">Balanced Growth<div class="tab-sub">Best for most</div></div>
             <div class="plan-tab" onclick="selectPlan('aggressive',this)">Aggressive<div class="tab-sub">Max returns</div></div>
@@ -186,7 +207,7 @@
     <!-- Allocation + Projection -->
     <div class="split-grid">
         <div class="card">
-            <h2>Your Monthly ₹6,000 Allocation</h2>
+            <h2 id="allocTitle">Your Monthly Allocation</h2>
             <div id="fundCards"></div>
             <div class="donut-wrap">
                 <canvas id="donut" width="160" height="160"></canvas>
@@ -209,7 +230,7 @@
 
     <!-- Plan comparison -->
     <div class="card">
-        <h2>All Plans Compared — 15 Years</h2>
+        <h2 id="compareTitle">All Plans Compared</h2>
         <div class="compare-grid" id="compareGrid"></div>
     </div>
 
@@ -374,6 +395,20 @@ function setMode(m){
     if(Object.keys(liveNAV).length>0)renderRankings();
 }
 function getStepPct(){ return sipMode==='stepup'?parseFloat(document.getElementById('stepPct').value)||0:0; }
+function getSipAmount(){ return parseFloat(document.getElementById('sipAmount').value)||6000; }
+function getSipYears(){ return parseInt(document.getElementById('sipYears').value)||15; }
+function recalcAllocations(){
+    const total=getSipAmount();
+    // Recalculate each plan's fund amounts based on their percentages
+    Object.values(PLANS).forEach(plan=>{
+        plan.funds.forEach(f=>{ f.amount=Math.round(total*f.pct/100); });
+        // Fix rounding — adjust first fund to make total exact
+        const sum=plan.funds.reduce((s,f)=>s+f.amount,0);
+        if(sum!==total) plan.funds[0].amount+=total-sum;
+    });
+    renderAll();
+    if(Object.keys(liveNAV).length>0)renderRankings();
+}
 
 // ========== PLANS ==========
 const COLORS={index:'#1a73e8',flexi:'#7c3aed',mid:'#e8710a',small:'#d32f2f',large:'#0d904f',elss:'#00897b',hybrid:'#5c6bc0',next50:'#f06292'};
@@ -423,7 +458,7 @@ function drawDonut(funds){
     ctx.clearRect(0,0,160,160);let start=-Math.PI/2;
     funds.forEach(f=>{const a=(f.pct/100)*2*Math.PI;ctx.beginPath();ctx.arc(cx,cy,r,start,start+a);ctx.arc(cx,cy,inner,start+a,start,true);ctx.closePath();ctx.fillStyle=COLORS[f.cat];ctx.fill();start+=a;});
     ctx.beginPath();ctx.arc(cx,cy,inner-1,0,2*Math.PI);ctx.fillStyle='white';ctx.fill();
-    ctx.fillStyle='#202124';ctx.font='bold 14px Segoe UI';ctx.textAlign='center';ctx.fillText('₹6,000',cx,cy);
+    ctx.fillStyle='#202124';ctx.font='bold 14px Segoe UI';ctx.textAlign='center';ctx.fillText(fmt(getSipAmount()),cx,cy);
     ctx.font='9px Segoe UI';ctx.fillStyle='#5f6368';ctx.fillText('/month',cx,cy+12);
     let leg='';funds.forEach(f=>{leg+=`<div><span class="legend-dot" style="background:${COLORS[f.cat]}"></span>${f.pct}% ${f.name.split(' ').slice(0,3).join(' ')}</div>`;});
     document.getElementById('legend').innerHTML=leg;
@@ -431,13 +466,16 @@ function drawDonut(funds){
 
 function renderAll(){
     const plan=PLANS[currentPlan],funds=plan.funds,step=getStepPct();
+    const sipAmt=getSipAmount(),years=getSipYears();
     const modeLabel=sipMode==='stepup'?`Step-Up ${step}%/year`:'Flat (No Step-Up)';
 
-    document.getElementById('projTitle').textContent=`15-Year Projection — ${modeLabel}`;
+    document.getElementById('projTitle').textContent=`${years}-Year Projection — ${modeLabel}`;
+    document.getElementById('planTitle').textContent=`Choose Your ${fmt(sipAmt)}/month Allocation Plan`;
+    document.getElementById('allocTitle').textContent=`Your Monthly ${fmt(sipAmt)} Allocation`;
     document.getElementById('planDesc').innerHTML=`<div class="info-box info-green"><strong>${plan.name}:</strong> ${plan.desc}</div>`;
     document.getElementById('modeExplain').innerHTML=sipMode==='stepup'
-        ?`<div class="info-box info-blue"><strong>Step-Up Mode:</strong> SIP increases ${step}% every year — ₹6,000 → ₹${Math.round(6000*(1+step/100)).toLocaleString('en-IN')} (Y2) → ₹${Math.round(6000*Math.pow(1+step/100,2)).toLocaleString('en-IN')} (Y3)... Ideal if your income grows.</div>`
-        :'<div class="info-box info-purple"><strong>Flat Mode:</strong> Fixed ₹6,000 every month for 15 years. No annual increase. Simple and consistent.</div>';
+        ?`<div class="info-box info-blue"><strong>Step-Up Mode:</strong> SIP increases ${step}% every year — ${fmt(sipAmt)} → ${fmt(Math.round(sipAmt*(1+step/100)))} (Y2) → ${fmt(Math.round(sipAmt*Math.pow(1+step/100,2)))} (Y3)... Ideal if your income grows.</div>`
+        :`<div class="info-box info-purple"><strong>Flat Mode:</strong> Fixed ${fmt(sipAmt)} every month for ${years} years. No annual increase. Simple and consistent.</div>`;
 
     // Fund cards
     let fc='';
@@ -459,8 +497,8 @@ function renderAll(){
     drawDonut(funds);
 
     // Projections — both modes
-    const resultsStep=funds.map(f=>({...f,...calcSIP(f.amount,15,f.rate,step)}));
-    const resultsFlat=funds.map(f=>({...f,...calcSIP(f.amount,15,f.rate,0)}));
+    const resultsStep=funds.map(f=>({...f,...calcSIP(f.amount,years,f.rate,step)}));
+    const resultsFlat=funds.map(f=>({...f,...calcSIP(f.amount,years,f.rate,0)}));
     const active=sipMode==='stepup'?resultsStep:resultsFlat;
     const tI=active.reduce((s,r)=>s+r.inv,0),tV=active.reduce((s,r)=>s+r.val,0);
     const tIs=resultsStep.reduce((s,r)=>s+r.inv,0),tVs=resultsStep.reduce((s,r)=>s+r.val,0);
@@ -468,8 +506,8 @@ function renderAll(){
 
     document.getElementById('projection').innerHTML=`
         <div class="projection-box">
-            <div class="proj-row"><span class="label">Monthly SIP</span><span><strong>₹6,000 ${sipMode==='stepup'?'(+'+step+'%/yr)':'(flat)'}</strong></span></div>
-            <div class="proj-row"><span class="label">Total Invested (15 yrs)</span><span><strong>${fmt(tI)}</strong></span></div>
+            <div class="proj-row"><span class="label">Monthly SIP</span><span><strong>${fmt(sipAmt)} ${sipMode==='stepup'?'(+'+step+'%/yr)':'(flat)'}</strong></span></div>
+            <div class="proj-row"><span class="label">Total Invested (${years} yrs)</span><span><strong>${fmt(tI)}</strong></span></div>
             <div class="proj-row"><span class="label">Wealth Gained</span><span style="color:var(--green)"><strong>${fmt(tV-tI)}</strong></span></div>
             <div class="proj-row total"><span>Expected Corpus</span><span>${fmt(tV)}</span></div>
             <div class="proj-row"><span class="label">Return Multiple</span><span><strong>${(tV/tI).toFixed(2)}x</strong></span></div>
@@ -479,7 +517,7 @@ function renderAll(){
     document.getElementById('modeCompare').innerHTML=`
         <div class="mode-compare">
             <div class="mode-box flat-box">
-                <div class="mode-title">Flat ₹6,000/mo</div>
+                <div class="mode-title">Flat ${fmt(sipAmt)}/mo</div>
                 <div class="mode-value" style="color:var(--primary)">${fmt(tVf)}</div>
                 <div class="mode-sub">Invested: ${fmt(tIf)}</div>
                 <div class="mode-sub">Gains: ${fmt(tVf-tIf)}</div>
@@ -494,15 +532,16 @@ function renderAll(){
         <div class="mode-diff">Step-up advantage: <strong>${fmt(tVs-tVf)}</strong> extra corpus</div>`;
 
     // Fund table
-    let ft=`<tr><th>Fund</th><th>SIP/mo</th><th>CAGR</th><th>ER</th><th>Invested</th><th>15Y Value</th><th>Gains</th></tr>`;
+    let ft=`<tr><th>Fund</th><th>SIP/mo</th><th>CAGR</th><th>ER</th><th>Invested</th><th>${years}Y Value</th><th>Gains</th></tr>`;
     active.forEach(r=>{const d=getFundReturns(r.name);ft+=`<tr><td style="color:${COLORS[r.cat]};max-width:170px">${r.name}</td><td>${fmt(r.amount)}</td><td>${r.rate}%</td><td>${d.er}%</td><td>${fmt(r.inv)}</td><td style="font-weight:700">${fmt(r.val)}</td><td style="color:var(--green)">${fmt(r.gains)}</td></tr>`;});
-    ft+=`<tr style="background:#f1f8e9;font-weight:700"><td style="color:var(--green)">TOTAL</td><td>${fmt(6000)}</td><td colspan="2">—</td><td>${fmt(tI)}</td><td style="color:var(--green)">${fmt(tV)}</td><td style="color:var(--green)">${fmt(tV-tI)}</td></tr>`;
+    ft+=`<tr style="background:#f1f8e9;font-weight:700"><td style="color:var(--green)">TOTAL</td><td>${fmt(sipAmt)}</td><td colspan="2">—</td><td>${fmt(tI)}</td><td style="color:var(--green)">${fmt(tV)}</td><td style="color:var(--green)">${fmt(tV-tI)}</td></tr>`;
     document.getElementById('fundTable').innerHTML=ft;
 
     // Plan comparison
     let cg='';
+    document.getElementById('compareTitle').textContent=`All Plans Compared — ${years} Years`;
     Object.entries(PLANS).forEach(([k,p])=>{
-        const res=p.funds.map(f=>calcSIP(f.amount,15,f.rate,step));
+        const res=p.funds.map(f=>calcSIP(f.amount,years,f.rate,step));
         const tv=res.reduce((s,r)=>s+r.val,0),ti=res.reduce((s,r)=>s+r.inv,0);
         cg+=`<div class="compare-card${k===currentPlan?' selected':''}" onclick="document.querySelectorAll('.plan-tab')[${['balanced','aggressive','conservative','taxsaver'].indexOf(k)}].click()">
             <h4>${p.name}</h4><div class="compare-value">${fmt(tv)}</div>
@@ -514,9 +553,12 @@ function renderAll(){
 
     // Milestones
     const wRate=funds.reduce((s,f)=>s+f.rate*f.pct/100,0);
-    const total=calcSIP(6000,15,wRate,step);
+    const total=calcSIP(sipAmt,years,wRate,step);
     let ms='';
-    [3,5,7,10,12,15].forEach(y=>{const d=total.yearData[y-1];
+    const milestoneYrs=[3,5,7,10,12,15,20,25,30,35,40].filter(y=>y<=years);
+    if(!milestoneYrs.includes(years))milestoneYrs.push(years);
+    milestoneYrs.sort((a,b)=>a-b);
+    milestoneYrs.forEach(y=>{const d=total.yearData[y-1];
         ms+=`<div class="milestone"><div class="milestone-year">Year<br>${y}</div><div><div class="milestone-value">${fmt(d.val)}</div><div class="milestone-detail">Invested: ${fmt(d.inv)} | SIP: ${fmt(d.sip)}/mo</div></div></div>`;
     });
     document.getElementById('milestones').innerHTML=ms;
